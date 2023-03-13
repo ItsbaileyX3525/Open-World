@@ -5,77 +5,59 @@ from panda3d.core import Loader
 from ursina import *
 from direct.interval.ActorInterval import LerpAnimInterval
 from ursina.prefabs.health_bar import HealthBar
+import pickle
 
-
-class Character(Entity): # Player model, attaches to the Harlod (FPC)
-    def __init__(self):
-        super().__init__()
-        self.actor=Player
-        self.actor.reparentTo(Harlod)
-        self.actor.setScale(0.018)
-        self.actor.setHpr(180,0,0)
-        x,y,z=self.actor.getPos()
+class Character(AnimatedEntity):
+    def __init__(self, **kwargs):
+        super().__init__(parent=Harlod,model=Player, position=(0,.9,1),rotation=(0,180,0),scale=0.018,**kwargs)
+        self.loop("idle")
         self.speedRegenBoost=1
-        self.actor.setPos(x,.9,1)
         self.walkSpeed=6
         self.runSpeed=17
         self.jogSpeed=12
         self.swiftness=1
-        self.actor.loop("idle")
         self.health_regen_timer=0
         self.sprint_bar = HealthBar(bar_color=color.yellow, roundness=.5,value=100,z=100,animation_duration=0)
         self.current_anim=None
-    def AnimLoop(self,toanim,rate=1,part=None):
-        fromanim=self.actor.get_current_anim()
-        self.actor.enableBlend()
-        self.actor.loop(str(toanim), partName=part)
-        self.actor.setPlayRate(rate,toanim,partName=part)
-        if self.current_anim!=None:
-            Interv=LerpAnimInterval(self.actor, 0.25, self.current_anim, toanim, partName=part)
-        else:
-            Interv=LerpAnimInterval(self.actor, 0.25, fromanim, toanim, partName=part)
-        Interv.start()
-        self.current_anim=toanim
-    
+
     def input(self, key):
         if key=='w':
-            self.AnimLoop(toanim="walk")
+            self.LerpAnim(toanim="walk")
         elif key=='w' and held_keys['shift']:
-            self.AnimLoop(toanim="run")
+            self.LerpAnim(toanim="run")
         elif held_keys['w'] and key=='shift':
-            self.AnimLoop(toanim="run")
+            self.LerpAnim(toanim="run")
         elif held_keys['shift'] and key=='s':
-            self.AnimLoop(toanim="walk backwards")
+            self.LerpAnim(toanim="walk backwards")
         elif held_keys['shift'] and key=='w':
-            self.AnimLoop(toanim="walk")
+            self.LerpAnim(toanim="walk")
         elif key=='a':
-            self.AnimLoop(toanim="strafe left")
+            self.LerpAnim(toanim="strafe left")
         elif key=='d':
-            self.AnimLoop(toanim="strafe right")
+            self.LerpAnim(toanim="strafe right")
         elif key=='s':
-            self.AnimLoop(toanim="walk backwards")
+            self.LerpAnim(toanim="walk backwards")
         elif key=='s' and held_keys['shift']:
-            self.AnimLoop(toanim="run backwards")
+            self.LerpAnim(toanim="run backwards")
         elif key=='shift' and held_keys['s']:
-            self.AnimLoop(toanim="run backwards")
+            self.LerpAnim(toanim="run backwards")
         elif key == 'd up' and not held_keys['a'] and not held_keys['s'] and not held_keys['w']:
-            self.AnimLoop(toanim="idle")
+            self.LerpAnim(toanim="idle")
         elif key == 'a up'and not held_keys['d'] and not held_keys['s'] and not held_keys['w']:
-            self.AnimLoop(toanim="idle")
+            self.LerpAnim(toanim="idle")
         elif key == 's up'and not held_keys['a'] and not held_keys['d'] and not held_keys['w']:
-            self.AnimLoop(toanim="idle")
+            self.LerpAnim(toanim="idle")
         elif key == 'w up'and not held_keys['a'] and not held_keys['s'] and not held_keys['d']:
-            self.AnimLoop(toanim="idle")
+            self.LerpAnim(toanim="idle")
         elif key=='shift up' and held_keys['w']:
-            self.AnimLoop(toanim="walk")
+            self.LerpAnim(toanim="walk")
         elif key=='shift up' and held_keys['s']:
-            self.AnimLoop(toanim="walk backwards")
+            self.LerpAnim(toanim="walk backwards")
         if key=='f':
             self.sprint_bar.max_value+=20
             self.speedRegenBoost+=1
             self.swiftness+=1
     def update(self):
-        self.x,self.y,self.z=self.actor.getPos()
         if held_keys['shift'] and held_keys['w'] and not held_keys['s']:
             if self.sprint_bar.value == 0:
                 Harlod.speed = self.walkSpeed * self.swiftness
@@ -108,9 +90,6 @@ async def LoadModel(model, name=None,parent=scene): #Smoothly loads models
     LoadingText.enabled=True
     modelname=name
     modelname = await loader.loadModel(model, blocking=False)
-    
-    modelname=Actor(modelname)
-    modelname.reparentTo(parent)
     globals()[name] = modelname
     LoadingText.enabled=False
     loadedmodels+=1
@@ -130,18 +109,33 @@ loadedmodels=0
 
 def GameStart():
     global Harlod
-    if loadedmodels==2:
+    if loadedmodels<=2:
         destroy(MainMenu)
         DefaultPlayArea=Entity(model='plane',scale=1000,texture='grass',collider='box')
         Harlod=FirstPersonController()
-
+        IntroMusic.stop()
+        destroy(GameLogo)
         ply=Character()
         destroy(MainMenuStart)
 
     else:
         GameAssets=Text(text='Game assets are still loading',x=-.15,y=.1)
         destroy(GameAssets,delay=1)
-window.vsync=True
+
+try:
+    with open('Prefrences.dat','rb') as pref:
+        isVsync=pickle.load(pref)
+except Exception:
+    isVsync=input("Vsync on or off? (Choice will be saved and can be changed later) ")
+    with open('Prefrences.dat','wb') as pref:
+        pickle.dump(isVsync, pref)
+
+if isVsync=='on':
+    window.vsync=True
+elif isVsync=='off':
+    window.vsync=False
+else:
+    print("failed to set vsync")
 window.show_ursina_splash=False
 app=Ursina(borderless=False)
 def logo2():
@@ -153,7 +147,9 @@ def logo2():
     invoke(QUETHEMUSIC,delay=5)
 
 def QUETHEMUSIC():
+    global GameLogo
     IntroMusic.play()
+    GameLogo=Sprite(texture='servents.png',scale=.8,y=2.2)
 
 camera.overlay.color = color.black
 logo = Sprite(name='ursina_splash', parent=camera.ui, texture='ursina_logo', world_z=camera.overlay.z-1, scale=.1, color=color.clear)
