@@ -16,7 +16,7 @@ volume_slider = Slider(min=0, max=100, default=100, dynamic=True,position=(-.25,
 info=Text(text='Restart to apply changes',size=.05,font="assets/misc/HighwayItalic-yad3.otf",y=-.3,x=-.25)
 
 volume_slider.on_value_changed = set_volume
-
+Text(text='test')
 Audio('assets/audio/settings.ogg',autoplay=True)
 Audio('assets/audio/intro.ogg',autoplay=True)
 app.run()
