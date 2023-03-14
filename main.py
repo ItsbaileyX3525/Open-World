@@ -206,8 +206,24 @@ def set_volume():
     app.sfxManagerList[0].setVolume(volume)
     volume = volume
     print(volume)
+def ChangeScreen():
+    global Fullscreen
+    if Fullscreen:
+        window.fullscreen=False
+        Fullscreen=False
+        FullscreenSetting.text=f'Fullscreen: off'
+        data['Fullscreen'] = False
+        with open("data.json", "w") as f:
+            json.dump(data, f)
+    else:
+        window.fullscreen=True
+        Fullscreen=True
+        FullscreenSetting.text=f'Fullscreen: on'
+        data['Fullscreen'] = True
+        with open("data.json", "w") as f:
+            json.dump(data, f)
 def SettingsMenu():
-    global VsyncSetting,volume_slider,volume
+    global VsyncSetting,volume_slider,volume,FullscreenSetting
     MainMenuStart.disabled=True; MainMenuStart.visible=False
     GameLogo.visible=False
     IntroMusic.stop(); SettingsMusic.play()
@@ -218,13 +234,17 @@ def SettingsMenu():
         VsyncSetting=Button(text=f'Vsync: off',scale_x=.2,scale_y=.1,y=.3,x=-.35,color=color.clear,highlight_color=color.clear,on_click=ChangeVsync)
     MainMenuQuit.visible=False; MainMenuQuit.disabled=True
     volume_slider = Slider(min=0, max=100, default=volume*100, dynamic=True,position=(-.25, .4),text='Master volume:',on_value_changed = set_volume)
-    
+    if Fullscreen:
+        FullscreenSetting=Button(text=f'Fullscreen: on',scale_x=.2,scale_y=.1,y=.2,x=-.35,color=color.clear,highlight_color=color.clear,on_click=ChangeScreen)
+    else:
+        FullscreenSetting=Button(text=f'Fullscreen: off',scale_x=.2,scale_y=.1,y=.2,x=-.35,color=color.clear,highlight_color=color.clear,on_click=ChangeScreen)
+
 def SettingsMenuReturn():
     MainMenuSettings.on_click=SettingsMenu; MainMenuSettings.text='Settings'; MainMenuSettings.y=-.1
     MainMenuStart.disabled=False; MainMenuStart.visible=True
     SettingsMusic.stop(); IntroMusic.play()
     GameLogo.visible=True
-    destroy(VsyncSetting); destroy(volume_slider)
+    destroy(VsyncSetting); destroy(volume_slider); destroy(FullscreenSetting)
     MainMenuQuit.visible=True; MainMenuQuit.disabled=False
     
 
@@ -258,11 +278,10 @@ print(vsyncEnabled)
 
 
 
-if vsyncEnabled:
-    window.vsync=True
-else:
-    window.vsync=False
-window.show_ursina_splash=False
+
+window.vsync=vsyncEnabled
+window.fullscreen=Fullscreen
+
 if cheese:
     while True:
         print("CHEESE!")
